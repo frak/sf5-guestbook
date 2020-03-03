@@ -38,10 +38,10 @@ class ConferenceController extends AbstractController
      * @throws RuntimeError
      * @throws SyntaxError
      */
-    public function index(ConferenceRepository $conferenceRepository): Response
+    public function index(): Response
     {
         return new Response(
-            $this->twig->render('conference/index.html.twig', ['conferences' => $conferenceRepository->findAll()])
+            $this->twig->render('conference/index.html.twig')
         );
     }
 
