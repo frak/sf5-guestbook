@@ -4,6 +4,9 @@ namespace App\Security;
 
 use App\Entity\Comment;
 use RuntimeException;
+use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
+use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -29,8 +32,13 @@ class SpamChecker
     /**
      * Use the Akismet spam checking service to vet a comment.
      *
+     * @param Comment $comment
+     * @param array   $context
      * @return int Spam score: 0: not spam, 1: maybe spam, 2: blatant spam
      * @throws TransportExceptionInterface
+     * @throws ClientExceptionInterface
+     * @throws RedirectionExceptionInterface
+     * @throws ServerExceptionInterface
      */
     public function getSpamScore(Comment $comment, array $context): int
     {
@@ -56,15 +64,14 @@ class SpamChecker
         );
 
         $headers = $response->getHeaders();
-        $content = $response->getContent();
-
-        if (isset($headers['x-akismet-debug-help'][0])) {
-            throw new RuntimeException(sprintf('Unable to check for spam: %s
-(%s).', $content, $headers['x-akismet-debug-help'][0]));
-        }
-
         if ('discard' === ($headers['x-akismet-pro-tip'][0] ?? '')) {
             return 2;
+        }
+
+        $content = $response->getContent();
+        if (isset($headers['x-akismet-debug-help'][0])) {
+            $message = "Unable to check for spam: {$content} ({$headers['x-akismet-debug-help'][0]}).";
+            throw new RuntimeException($message);
         }
 
         return 'true' === $content ? 1 : 0;
