@@ -2,6 +2,8 @@
 
 namespace App\Tests\Controller;
 
+use App\Repository\CommentRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class ConferenceControllerTest extends WebTestCase
@@ -37,9 +39,13 @@ class ConferenceControllerTest extends WebTestCase
         $client->submitForm('Submit', [
             'comment_form[author]' => 'Fabien',
             'comment_form[text]' => 'A test comment',
-            'comment_form[email]' => 'test@example.com',
+            'comment_form[email]' => $email = 'test@example.com',
             'comment_form[photo]' => dirname(__DIR__, 2).'/public/images/under-construction.gif',
         ]);
+
+        $comment = self::$container->get(CommentRepository::class)->findOneByEmail($email);
+        $comment->setState('published');
+        self::$container->get(EntityManagerInterface::class)->flush();
 
         static::assertResponseRedirects();
         $client->followRedirect();
