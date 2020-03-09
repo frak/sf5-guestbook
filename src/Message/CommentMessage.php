@@ -15,7 +15,7 @@ class CommentMessage
      * @param int   $id
      * @param array $context
      */
-    public function __construct(int $id, array $context)
+    public function __construct(int $id, array $context = [])
     {
         $this->id = $id;
         $this->context = $context;

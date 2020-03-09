@@ -12,6 +12,7 @@ runtime:
         - ctype
         - iconv
         - pdo_pgsql
+        - xsl
 
 build:
     flavor: none
