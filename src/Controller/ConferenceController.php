@@ -7,6 +7,7 @@ use App\Entity\Conference;
 use App\Form\CommentFormType;
 use App\Message\CommentMessage;
 use App\Repository\CommentRepository;
+use App\Repository\ConferenceRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use RuntimeException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -51,11 +52,14 @@ class ConferenceController extends AbstractController
      * @throws RuntimeError
      * @throws SyntaxError
      */
-    public function index(): Response
+    public function index(ConferenceRepository $conferenceRepository): Response
     {
-        return new Response(
-            $this->twig->render('conference/index.html.twig')
+        $response = new Response(
+            $this->twig->render('conference/index.html.twig', ['conferences' => $conferenceRepository->findAll()])
         );
+        $response->setSharedMaxAge(3600);
+
+        return $response;
     }
 
     /**
@@ -120,5 +124,23 @@ class ConferenceController extends AbstractController
                 ]
             )
         );
+    }
+
+    /**
+     * @Route("/conference_header", name="conference_header")
+     * @param ConferenceRepository $conferenceRepository
+     * @return Response
+     * @throws LoaderError
+     * @throws RuntimeError
+     * @throws SyntaxError
+     */
+    public function conferenceHeader(ConferenceRepository $conferenceRepository)
+    {
+        $response = new Response(
+            $this->twig->render('conference/header.html.twig', ['conferences' => $conferenceRepository->findAll()])
+        );
+        $response->setSharedMaxAge(3600);
+
+        return $response;
     }
 }
