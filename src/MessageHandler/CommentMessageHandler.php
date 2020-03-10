@@ -4,14 +4,14 @@ namespace App\MessageHandler;
 
 use App\Image\ImageOptimiser;
 use App\Message\CommentMessage;
+use App\Notification\CommentReviewNotification;
 use App\Repository\CommentRepository;
 use App\Security\SpamChecker;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Bridge\Twig\Mime\NotificationEmail;
-use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Messenger\Handler\MessageHandlerInterface;
 use Symfony\Component\Messenger\MessageBusInterface;
+use Symfony\Component\Notifier\NotifierInterface;
 use Symfony\Component\Workflow\WorkflowInterface;
 
 class CommentMessageHandler implements MessageHandlerInterface
@@ -26,12 +26,10 @@ class CommentMessageHandler implements MessageHandlerInterface
     private $bus;
     /** @var WorkflowInterface */
     private $workflow;
-    /** @var MailerInterface */
-    private $mailer;
+    /** @var NotifierInterface */
+    private $notifier;
     /** @var ImageOptimiser */
     private $imageOptimiser;
-    /** @var string */
-    private $adminEmail;
     /** @var string */
     private $photoDir;
     /** @var LoggerInterface */
@@ -45,8 +43,8 @@ class CommentMessageHandler implements MessageHandlerInterface
      * @param CommentRepository      $commentRepository
      * @param MessageBusInterface    $bus
      * @param WorkflowInterface      $commentStateMachine
-     * @param MailerInterface        $mailer
-     * @param string                 $adminEmail
+     * @param NotifierInterface      $notifier
+     * @param string                 $photoDir
      * @param LoggerInterface        $logger
      */
     public function __construct(
@@ -55,9 +53,8 @@ class CommentMessageHandler implements MessageHandlerInterface
         CommentRepository $commentRepository,
         MessageBusInterface $bus,
         WorkflowInterface $commentStateMachine,
-        MailerInterface $mailer,
+        NotifierInterface $notifier,
         ImageOptimiser $imageOptimiser,
-        string $adminEmail,
         string $photoDir,
         LoggerInterface $logger = null
     ) {
@@ -66,9 +63,8 @@ class CommentMessageHandler implements MessageHandlerInterface
         $this->commentRepository = $commentRepository;
         $this->bus = $bus;
         $this->workflow = $commentStateMachine;
-        $this->mailer = $mailer;
+        $this->notifier = $notifier;
         $this->imageOptimiser = $imageOptimiser;
-        $this->adminEmail = $adminEmail;
         $this->photoDir = $photoDir;
         $this->logger = $logger;
     }
@@ -92,18 +88,12 @@ class CommentMessageHandler implements MessageHandlerInterface
             $this->entityManager->flush();
             $this->bus->dispatch($message);
         } elseif ($this->workflow->can($comment, 'publish') || $this->workflow->can($comment, 'publish_ham')) {
-            $this->mailer->send(
-                (new NotificationEmail())
-                    ->subject('New comment posted')
-                    ->htmlTemplate('emails/comment_notification.html.twig')
-                    ->from($this->adminEmail)
-                    ->to($this->adminEmail)
-                    ->context(['comment' => $comment])
-            );
+            $notification = new CommentReviewNotification($comment, $message->getReviewUrl());
+            $this->notifier->send($notification, ...$this->notifier->getAdminRecipients());
         } elseif ($this->workflow->can($comment, 'optimize')) {
             $photoFilename = $comment->getPhotoFilename();
             if ($photoFilename) {
-                $this->imageOptimiser->resize($photoFilename);
+                $this->imageOptimiser->resize($this->photoDir.'/'.$photoFilename);
             }
             $this->workflow->apply($comment, 'optimise');
             $this->entityManager->flush();
