@@ -2,15 +2,24 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Core\Annotation\ApiResource;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\String\Slugger\SluggerInterface;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\ConferenceRepository")
  * @UniqueEntity("slug")
+ *
+ * @ApiResource(
+ *     itemOperations={"get"={"normalisation_context"={"groups"="conference:list"}}},
+ *     order={"year"="DESC", "city"="ASC"},
+ *     paginationEnabled=false,
+ *     collectionOperations={"get"={"normalisation_context"={"groups"="conference:list"}}},
+ * )
  */
 class Conference
 {
@@ -18,31 +27,42 @@ class Conference
      * @ORM\Id()
      * @ORM\GeneratedValue()
      * @ORM\Column(type="integer")
+     *
+     * @Groups({"conference:list", "conference:item"})
      */
     private $id;
 
     /**
      * @ORM\Column(type="string", length=255)
+     *
+     * @Groups({"conference:list", "conference:item"})
      */
     private $city;
 
     /**
      * @ORM\Column(type="string", length=4)
+     *
+     * @Groups({"conference:list", "conference:item"})
      */
     private $year;
 
     /**
      * @ORM\Column(type="boolean")
+     *
+     * @Groups({"conference:list", "conference:item"})
      */
     private $isInternational;
 
     /**
      * @ORM\OneToMany(targetEntity="App\Entity\Comment", mappedBy="conference", orphanRemoval=true)
+     * @Groups({"conference:item"})
      */
     private $comments;
 
     /**
      * @ORM\Column(type="string", length=255, unique=true)
+     *
+     * @Groups({"conference:list", "conference:item"})
      */
     private $slug;
 
